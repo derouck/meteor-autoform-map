@@ -18,21 +18,28 @@ AutoForm.addInputType 'map',
 
 		lat = node.find('.js-lat').val()
 		lng = node.find('.js-lng').val()
+		rad = node.find('.js-rad').val()
 
 		if lat.length > 0 and lng.length > 0
-			lat: lat
-			lng: lng
+			if rad.length > 0
+				lat: lat
+				lng: lng
+				rad: rad
+			else
+				lat: lat
+				lng: lng
+
 	contextAdjust: (ctx) ->
 		ctx.loading = new ReactiveVar(false)
 		ctx
 	valueConverters:
 		string: (value) ->
 			if @attr('reverse')
-				"#{value.lng},#{value.lat}"
+				"#{value.lng},#{value.lat},#{value.rad}"
 			else
-				"#{value.lat},#{value.lng}"
+				"#{value.lat},#{value.lng},#{value.rad}"
 		numberArray: (value) ->
-			[value.lng, value.lat]
+			[value.lng, value.lat, value.rad]
 
 Template.afMap.created = ->
 	GoogleMaps.load(libraries: 'places')
@@ -41,31 +48,26 @@ initTemplateAndGoogleMaps = ->
 	@data.options = _.extend {}, defaults, @data.atts
 
 	@data.marker = undefined
-	@data.setMarker = (map, location, zoom=0) =>
+	@data.setMarker = (map, location, radius, zoom=0) =>
 		@$('.js-lat').val(location.lat())
 		@$('.js-lng').val(location.lng())
+		@$('.js-rad').val(radius)
 
 		if @data.marker then @data.marker.setMap null
 		@data.marker = new google.maps.Marker
 			position: location
 			map: map
-			draggable: true
+			# draggable: true if its dragged the change will not be stored
+
+		console.log(@data.circle)
+		if @data.circle
+			console.log(location)
+			console.log(radius)
+			@data.circle.setCenter(location);
+			@data.circle.setRadius(parseFloat(radius));
 
 		if zoom > 0
 			@data.map.setZoom zoom
-
-		if @data.options.radius > 0
-			if @data.circle then @data.circle.setMap null
-			@data.circle = new google.maps.Circle
-				strokeColor: '#FF0000'
-				strokeOpacity: 0.8
-				strokeWeight: 2
-				fillColor: '#FF0000'
-				fillOpacity: 0.35
-				map: map
-				center: location
-				radius: @data.options.radius * 10
-				editable: true
 
 	mapOptions =
 		zoom: 0
@@ -77,10 +79,24 @@ initTemplateAndGoogleMaps = ->
 
 	@data.map = new google.maps.Map @find('.js-map'), mapOptions
 
+	if @data.options.radius > 0
+		if @data.circle then @data.circle.setMap null
+		@data.circle = new google.maps.Circle
+			strokeColor: '#FF0000'
+			strokeOpacity: 0.8
+			strokeWeight: 2
+			fillColor: '#FF0000'
+			fillOpacity: 0.35
+			map: @data.map
+			#center: location
+			radius: @data.options.radius * 10
+			editable: true
+
 	if @data.value
-		location = if typeof @data.value == 'string' then @data.value.split ',' else if @data.value.hasOwnProperty 'lat' then [@data.value.lat, @data.value.lng] else [@data.value[1],@data.value[0]]
+		location = if typeof @data.value == 'string' then @data.value.split ',' else if @data.value.hasOwnProperty 'lat' then [@data.value.lat, @data.value.lng, @data.value.rad] else [@data.value[1],@data.value[0],@data.value[2]]
+		radius = location[2]
 		location = new google.maps.LatLng parseFloat(location[0]), parseFloat(location[1])
-		@data.setMarker @data.map, location, @data.options.zoom
+		@data.setMarker @data.map, location, radius, @data.options.zoom
 		@data.map.setCenter location
 	else
 		@data.map.setCenter new google.maps.LatLng @data.options.defaultLat, @data.options.defaultLng
@@ -109,7 +125,13 @@ initTemplateAndGoogleMaps = ->
 		@data.atts.rendered @data.map
 
 	google.maps.event.addListener @data.map, 'click', (e) =>
-		@data.setMarker @data.map, e.latLng
+		rad = @$('.js-rad').val();
+		@data.setMarker @data.map, e.latLng, rad
+
+
+	google.maps.event.addListener @data.circle, 'radius_changed', (e) =>
+		console.log(@data.circle.radius);
+		@$('.js-rad').val(@data.circle.radius);
 
 	@$('.js-map').closest('form').on 'reset', =>
 		@data.marker and @data.marker.setMap null

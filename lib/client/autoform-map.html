@@ -3,9 +3,11 @@
         {{#if atts.displayCoordinates}}
             <input type="text" class="js-lat">
             <input type="text" class="js-lng">
+            <input type="text" class="js-rad">
         {{else}}
 		    <input type="text" class="js-lat" style="display: none">
-		    <input type="text" class="js-lng" style="display: none">
+            <input type="text" class="js-lng" style="display: none">
+            <input type="text" class="js-rad" style="display: none">
         {{/if}}
 		<input type="text" class="controls af-map-search-box js-search af-map-search-box-hidden">
 		{{#if atts.geolocation}}
