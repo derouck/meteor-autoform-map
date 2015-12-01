@@ -8,6 +8,8 @@ defaults =
 	searchBox: false
 	autolocate: false
 	zoom: 13
+	radius: 0
+	displayCoordinates: false
 
 AutoForm.addInputType 'map',
 	template: 'afMap'
@@ -47,9 +49,23 @@ initTemplateAndGoogleMaps = ->
 		@data.marker = new google.maps.Marker
 			position: location
 			map: map
+			draggable: true
 
 		if zoom > 0
 			@data.map.setZoom zoom
+
+		if @data.options.radius > 0
+			if @data.circle then @data.circle.setMap null
+			@data.circle = new google.maps.Circle
+				strokeColor: '#FF0000'
+				strokeOpacity: 0.8
+				strokeWeight: 2
+				fillColor: '#FF0000'
+				fillOpacity: 0.35
+				map: map
+				center: location
+				radius: @data.options.radius * 10
+				editable: true
 
 	mapOptions =
 		zoom: 0
