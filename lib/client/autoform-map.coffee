@@ -136,8 +136,9 @@ initTemplateAndGoogleMaps = ->
 		rad = @$('.js-rad').val();
 		@setMarker @map, e.latLng, rad
 
-	google.maps.event.addListener @circle, 'radius_changed', (e) =>
-		@$('.js-rad').val(@circle.radius);
+	if @circle
+		google.maps.event.addListener @circle, 'radius_changed', (e) =>
+			@$('.js-rad').val(@circle.radius);
 
 	@$('.js-map').closest('form').on 'reset', =>
 		@marker and @marker.setMap null
