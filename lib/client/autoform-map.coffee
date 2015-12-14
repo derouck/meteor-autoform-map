@@ -7,7 +7,7 @@ defaults =
 	geolocation: false
 	searchBox: false
 	autolocate: false
-	zoom: 13
+	zoom: 1
 	radius: 0
 	displayCoordinates: false
 
@@ -42,97 +42,109 @@ AutoForm.addInputType 'map',
 			[value.lng, value.lat, value.rad]
 
 Template.afMap.created = ->
+	@mapReady = new ReactiveVar false
 	GoogleMaps.load(libraries: 'places')
 
-initTemplateAndGoogleMaps = ->
-	@data.options = _.extend {}, defaults, @data.atts
+	@_stopInterceptValue = false
+	@_interceptValue = (ctx) ->
+		t = Template.instance()
+		if t.mapReady.get() and ctx.value and not t._stopInterceptValue
+			location = if typeof ctx.value == 'string' then ctx.value.split ',' else if ctx.value.hasOwnProperty 'lat' then [ctx.value.lat, ctx.value.lng] else [ctx.value[1], ctx.value[0]]
+			location = new google.maps.LatLng parseFloat(location[0]), parseFloat(location[1])
+			t.setMarker t.map, location, t.options.zoom
+			t.map.setCenter location
+			t._stopInterceptValue = true
 
-	@data.marker = undefined
-	@data.setMarker = (map, location, radius=100, zoom=0) =>
+initTemplateAndGoogleMaps = ->
+	@options = _.extend {}, defaults, @data.atts
+
+	@marker = undefined
+	@setMarker = (map, location, radius=100, zoom=0) =>
 		@$('.js-lat').val(location.lat())
 		@$('.js-lng').val(location.lng())
 		@$('.js-rad').val(radius)
 
-		if @data.marker then @data.marker.setMap null
-		@data.marker = new google.maps.Marker
+		if @marker then @marker.setMap null
+		@marker = new google.maps.Marker
 			position: location
 			map: map
 			# draggable: true if its dragged the change will not be stored
 
-		if @data.circle
-			@data.circle.setCenter(location);
-			@data.circle.setRadius(parseFloat(radius));
+		if @circle
+			@circle.setCenter(location);
+			@circle.setRadius(parseFloat(radius));
 
 		if zoom > 0
-			@data.map.setZoom zoom
+			@map.setZoom zoom
 
 	mapOptions =
 		zoom: 0
-		mapTypeId: google.maps.MapTypeId[@data.options.mapType]
+		mapTypeId: google.maps.MapTypeId[@options.mapType]
 		streetViewControl: false
 
 	if @data.atts.googleMap
 		_.extend mapOptions, @data.atts.googleMap
 
-	@data.map = new google.maps.Map @find('.js-map'), mapOptions
+	@map = new google.maps.Map @find('.js-map'), mapOptions
 
-	if @data.options.radius > 0
-		if @data.circle then @data.circle.setMap null
-		@data.circle = new google.maps.Circle
+	if @options.radius > 0
+		if @circle then @circle.setMap null
+		@circle = new google.maps.Circle
 			strokeColor: '#FF0000'
 			strokeOpacity: 0.8
 			strokeWeight: 2
 			fillColor: '#FF0000'
 			fillOpacity: 0.35
-			map: @data.map
+			map: @map
 			#center: location
-			radius: @data.options.radius
+			radius: @options.radius
 			editable: true
 
-	if @data.value
-		location = if typeof @data.value == 'string' then @data.value.split ',' else if @data.value.hasOwnProperty 'lat' then [@data.value.lat, @data.value.lng, @data.value.rad] else [@data.value[1],@data.value[0],@data.value[2]]
+	if @value
+		location = if typeof @value == 'string' then @value.split ',' else if @value.hasOwnProperty 'lat' then [@value.lat, @value.lng, @value.rad] else [@value[1],@value[0],@value[2]]
 		radius = location[2]
 		location = new google.maps.LatLng parseFloat(location[0]), parseFloat(location[1])
-		@data.setMarker @data.map, location, radius, @data.options.zoom
-		@data.map.setCenter location
+		@setMarker @map, location, radius, @options.zoom
+		@map.setCenter location
 	else
-		@data.map.setCenter new google.maps.LatLng @data.options.defaultLat, @data.options.defaultLng
-		@data.map.setZoom @data.options.zoom
+		@map.setCenter new google.maps.LatLng @options.defaultLat, @options.defaultLng
+		@map.setZoom @options.zoom
 
 	if @data.atts.searchBox
 		input = @find('.js-search')
 
-		@data.map.controls[google.maps.ControlPosition.TOP_LEFT].push input
+		@map.controls[google.maps.ControlPosition.TOP_LEFT].push input
 		searchBox = new google.maps.places.SearchBox input
 
 		google.maps.event.addListener searchBox, 'places_changed', =>
 			location = searchBox.getPlaces()[0].geometry.location
-			@data.setMarker @data.map, location
-			@data.map.setCenter location
+			@setMarker @map, location
+			@map.setCenter location
 
 		$(input).removeClass('af-map-search-box-hidden')
 
-	if @data.atts.autolocate and navigator.geolocation and not @data.value
+	if @data.atts.autolocate and navigator.geolocation and not @value
 		navigator.geolocation.getCurrentPosition (position) =>
 			location = new google.maps.LatLng position.coords.latitude, position.coords.longitude
-			@data.setMarker @data.map, location, @data.options.radius, @data.options.zoom
-			@data.map.setCenter location
+			@setMarker @map, location, @options.radius, @options.zoom
+			@map.setCenter location
 
 	if typeof @data.atts.rendered == 'function'
-		@data.atts.rendered @data.map
+		@data.atts.rendered @map
 
-	google.maps.event.addListener @data.map, 'click', (e) =>
+	google.maps.event.addListener @map, 'click', (e) =>
 		rad = @$('.js-rad').val();
-		@data.setMarker @data.map, e.latLng, rad
+		@setMarker @map, e.latLng, rad
 
-
-	google.maps.event.addListener @data.circle, 'radius_changed', (e) =>
-		@$('.js-rad').val(@data.circle.radius);
+	google.maps.event.addListener @circle, 'radius_changed', (e) =>
+		@$('.js-rad').val(@circle.radius);
 
 	@$('.js-map').closest('form').on 'reset', =>
-		@data.marker and @data.marker.setMap null
-		@data.map.setCenter new google.maps.LatLng @data.options.defaultLat, @data.options.defaultLng
-		@data.map.setZoom @data.options?.zoom or 0
+		@marker and @marker.setMap null
+		@map.setCenter new google.maps.LatLng @options.defaultLat, @options.defaultLng
+		@map.setZoom @options?.zoom or 0
+
+	@mapReady.set true
 
 Template.afMap.rendered = ->
 	@autorun =>
@@ -140,6 +152,7 @@ Template.afMap.rendered = ->
 
 Template.afMap.helpers
 	schemaKey: ->
+		Template.instance()._interceptValue @
 		@atts['data-schema-key']
 	width: ->
 		if typeof @atts.width == 'string'
