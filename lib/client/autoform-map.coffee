@@ -60,11 +60,15 @@ initTemplateAndGoogleMaps = ->
 	@options = _.extend {}, defaults, @data.atts
 
 	@marker = undefined
-	@setMarker = (map, location, radius=0, zoom=0) =>
-		@$('.js-lat').val(location.lat())
-		@$('.js-lng').val(location.lng())
-		@$('.js-rad').val(radius)
-
+	@setMarker = (map, location=0, radius=0, zoom=0) =>
+		if location
+			@$('.js-lat').val(location.lat())
+			@$('.js-lng').val(location.lng())
+			@$('.js-rad').val(radius)
+		else
+			location = new google.maps.LatLng parseFloat(@$('.js-lat').val()), parseFloat(@$('.js-lng').val())
+			radius = @$('.js-rad').val()
+			
 		if @marker then @marker.setMap null
 		@marker = new google.maps.Marker
 			position: location
@@ -181,3 +185,6 @@ Template.afMap.events
 
 	'keydown .js-search': (e) ->
 		if e.keyCode == KEY_ENTER then e.preventDefault()
+
+	'input .js-lat, input .js-lng, input .js-rad': (e,t) ->
+		t.setMarker t.map
