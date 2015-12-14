@@ -48,7 +48,7 @@ initTemplateAndGoogleMaps = ->
 	@data.options = _.extend {}, defaults, @data.atts
 
 	@data.marker = undefined
-	@data.setMarker = (map, location, radius, zoom=0) =>
+	@data.setMarker = (map, location, radius=100, zoom=0) =>
 		@$('.js-lat').val(location.lat())
 		@$('.js-lng').val(location.lng())
 		@$('.js-rad').val(radius)
@@ -59,10 +59,7 @@ initTemplateAndGoogleMaps = ->
 			map: map
 			# draggable: true if its dragged the change will not be stored
 
-		console.log(@data.circle)
 		if @data.circle
-			console.log(location)
-			console.log(radius)
 			@data.circle.setCenter(location);
 			@data.circle.setRadius(parseFloat(radius));
 
@@ -89,7 +86,7 @@ initTemplateAndGoogleMaps = ->
 			fillOpacity: 0.35
 			map: @data.map
 			#center: location
-			radius: @data.options.radius * 10
+			radius: @data.options.radius
 			editable: true
 
 	if @data.value
@@ -118,7 +115,7 @@ initTemplateAndGoogleMaps = ->
 	if @data.atts.autolocate and navigator.geolocation and not @data.value
 		navigator.geolocation.getCurrentPosition (position) =>
 			location = new google.maps.LatLng position.coords.latitude, position.coords.longitude
-			@data.setMarker @data.map, location, @data.options.zoom
+			@data.setMarker @data.map, location, @data.options.radius, @data.options.zoom
 			@data.map.setCenter location
 
 	if typeof @data.atts.rendered == 'function'
@@ -130,7 +127,6 @@ initTemplateAndGoogleMaps = ->
 
 
 	google.maps.event.addListener @data.circle, 'radius_changed', (e) =>
-		console.log(@data.circle.radius);
 		@$('.js-rad').val(@data.circle.radius);
 
 	@$('.js-map').closest('form').on 'reset', =>
