@@ -49,9 +49,10 @@ Template.afMap.created = ->
 	@_interceptValue = (ctx) ->
 		t = Template.instance()
 		if t.mapReady.get() and ctx.value and not t._stopInterceptValue
-			location = if typeof ctx.value == 'string' then ctx.value.split ',' else if ctx.value.hasOwnProperty 'lat' then [ctx.value.lat, ctx.value.lng] else [ctx.value[1], ctx.value[0]]
+			location = if typeof ctx.value == 'string' then ctx.value.split ',' else if ctx.value.hasOwnProperty 'lat' then [ctx.value.lat, ctx.value.lng, ctx.value.rad] else [ctx.value[1], ctx.value[0], ctx.value[2]]
+			radius = location[2]
 			location = new google.maps.LatLng parseFloat(location[0]), parseFloat(location[1])
-			t.setMarker t.map, location, t.options.zoom
+			t.setMarker t.map, location, radius, t.options.zoom
 			t.map.setCenter location
 			t._stopInterceptValue = true
 
@@ -59,7 +60,7 @@ initTemplateAndGoogleMaps = ->
 	@options = _.extend {}, defaults, @data.atts
 
 	@marker = undefined
-	@setMarker = (map, location, radius=100, zoom=0) =>
+	@setMarker = (map, location, radius=0, zoom=0) =>
 		@$('.js-lat').val(location.lat())
 		@$('.js-lng').val(location.lng())
 		@$('.js-rad').val(radius)
@@ -100,15 +101,8 @@ initTemplateAndGoogleMaps = ->
 			radius: @options.radius
 			editable: true
 
-	if @value
-		location = if typeof @value == 'string' then @value.split ',' else if @value.hasOwnProperty 'lat' then [@value.lat, @value.lng, @value.rad] else [@value[1],@value[0],@value[2]]
-		radius = location[2]
-		location = new google.maps.LatLng parseFloat(location[0]), parseFloat(location[1])
-		@setMarker @map, location, radius, @options.zoom
-		@map.setCenter location
-	else
-		@map.setCenter new google.maps.LatLng @options.defaultLat, @options.defaultLng
-		@map.setZoom @options.zoom
+	@map.setCenter new google.maps.LatLng @options.defaultLat, @options.defaultLng
+	@map.setZoom @options.zoom
 
 	if @data.atts.searchBox
 		input = @find('.js-search')
@@ -181,8 +175,8 @@ Template.afMap.events
 		@loading.set true
 		navigator.geolocation.getCurrentPosition (position) =>
 			location = new google.maps.LatLng position.coords.latitude, position.coords.longitude
-			@setMarker @map, location, @options.zoom
-			@map.setCenter location
+			t.setMarker t.map, location, t.options.radius, t.options.zoom
+			t.map.setCenter location
 			@loading.set false
 
 	'keydown .js-search': (e) ->
